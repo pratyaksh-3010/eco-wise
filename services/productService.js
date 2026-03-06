@@ -1,50 +1,64 @@
 const { calculateEcoScore } = require("./ecoScoreService");
-const Product= require("../models/product");
+const Product = require("../models/product");
+const { fetchProducts } = require("./productApiServices");
 
 async function searchProducts(productName) {
 
-  const products = [
-    {
-      name: "Plastic Toothbrush",
-      description: "Standard plastic toothbrush",
-      price: 20
-    },
-    {
-      name: "Bamboo Toothbrush",
-      description: "Biodegradable bamboo toothbrush, plastic free, compostable",
-      price: 40
-    },
-    {
-      name: "Recycled Plastic Toothbrush",
-      description: "Made from recyclable material and reusable packaging",
-      price: 35
-    }
-  ];
+  // 1️⃣ Check cache in DB
+  const existingProducts = await Product.find({
+    searchedProduct: productName
+  });
 
-  const scoredProducts = [];
+  if (existingProducts.length > 0) {
+    console.log("Returning cached results from DB");
 
-  for (let product of products) {
+    existingProducts.sort((a, b) => b.ecoScore - a.ecoScore);
+
+    return {
+      searchedProduct: productName,
+      bestProduct: existingProducts[0],
+      allProducts: existingProducts,
+      cached: true
+    };
+  }
+
+  console.log("Fetching new data...");
+
+ const products = await fetchProducts(productName);
+  // 3️⃣ Calculate eco score
+  const scoredProducts = products.map(product => {
     const score = calculateEcoScore(product.description);
 
-    const newProduct = new Product({
+    return {
       searchedProduct: productName,
       name: product.name,
       description: product.description,
       price: product.price,
       ecoScore: score
-    });
+    };
+  });
 
-    await newProduct.save();
-
-    scoredProducts.push({ ...product, ecoScore: score });
+  // 4️⃣ Save to DB (with upsert to avoid duplicates)
+  for (const product of scoredProducts) {
+    await Product.updateOne(
+      {
+        searchedProduct: product.searchedProduct,
+        name: product.name
+      },
+      { $set: product },
+      { upsert: true }
+    );
   }
 
+  // 5️⃣ Sort by eco score
   scoredProducts.sort((a, b) => b.ecoScore - a.ecoScore);
 
   return {
     searchedProduct: productName,
     bestProduct: scoredProducts[0],
-    allProducts: scoredProducts
+    allProducts: scoredProducts,
+    cached: false
   };
 }
+
 module.exports = { searchProducts };
