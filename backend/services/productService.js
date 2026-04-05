@@ -4,7 +4,7 @@ const { fetchProducts } = require("./productApiServices");
 
 async function searchProducts(productName) {
 
-  // 1️⃣ Check cache in DB
+  // 1. Check cache in DB
   const existingProducts = await Product.find({
     searchedProduct: productName
   });
@@ -24,8 +24,19 @@ async function searchProducts(productName) {
 
   console.log("Fetching new data...");
 
- const products = await fetchProducts(productName);
-  // 3️⃣ Calculate eco score
+  // 2. Fetch from API
+  const products = await fetchProducts(productName);
+
+  if (products.length === 0) {
+    return {
+      searchedProduct: productName,
+      bestProduct: null,
+      allProducts: [],
+      cached: false
+    };
+  }
+
+  // 3. Calculate eco score
   const scoredProducts = products.map(product => {
     const score = calculateEcoScore(product.description);
 
@@ -34,28 +45,36 @@ async function searchProducts(productName) {
       name: product.name,
       description: product.description,
       price: product.price,
-      ecoScore: score
+      ecoScore: score,
+      buyLink: product.buyLink || null,
+      store: product.store || null,
+      rating: product.rating || null,
+      image: product.image || null
     };
   });
 
-  // 4️⃣ Save to DB (with upsert to avoid duplicates)
+  // 4. Save to DB (with upsert to avoid duplicates)
   for (const product of scoredProducts) {
-    await Product.updateOne(
-      {
-        searchedProduct: product.searchedProduct,
-        name: product.name
-      },
-      { $set: product },
-      { upsert: true }
-    );
+    try {
+      await Product.updateOne(
+        {
+          searchedProduct: product.searchedProduct,
+          name: product.name
+        },
+        { $set: product },
+        { upsert: true }
+      );
+    } catch (dbErr) {
+      console.error("DB save error for product:", product.name, dbErr.message);
+    }
   }
 
-  // 5️⃣ Sort by eco score
+  // 5. Sort by eco score
   scoredProducts.sort((a, b) => b.ecoScore - a.ecoScore);
 
   return {
     searchedProduct: productName,
-    bestProduct: scoredProducts[0],
+    bestProduct: scoredProducts[0] || null,
     allProducts: scoredProducts,
     cached: false
   };

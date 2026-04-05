@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Eco Product Finder</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo">🌿</div>
+      <h1>Eco Product Finder</h1>
+      <p class="tagline">Discover sustainable alternatives</p>
+    </div>
+
+    <div class="search-box">
+      <input 
+        type="text" 
+        id="productInput" 
+        placeholder="e.g. toothbrush, water bottle, bags..."
+        autocomplete="off"
+      />
+      <button id="searchBtn">
+        <span class="btn-icon">🔍</span>
+        <span>Search</span>
+      </button>
+    </div>
+
+    <div id="result"></div>
+
+    <div class="footer">
+      <p>🌍 Making shopping greener, one product at a time</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+
+</body>
+</html>
